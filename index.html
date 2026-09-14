@@ -33,7 +33,7 @@
                 <div class="flex items-start gap-2 pt-1">
                     <input type="checkbox" id="suscripcion-rumberos" class="mt-0.5 accent-emerald-400 w-4 h-4 rounded cursor-pointer">
                     <label for="suscripcion-rumberos" class="text-[11px] text-slate-400 cursor-pointer select-none leading-tight">
-                        Agregame a la lista de rumberos para recibir notifications de nuevas fiestas
+                        Agregame a la lista de rumberos para recibir notificaciones de nuevas fiestas
                     </label>
                 </div>
 
@@ -43,9 +43,9 @@
 
         <!-- SECCIÓN 2: RANKING DE CANCIONES (Abajo) -->
         <div class="bg-slate-900 border border-cyan-500/50 p-4 rounded-2xl text-left shadow-lg">
-            <h3 class="text-sm font-bold text-cyan-400 mb-3 flex items-center gap-2">🏆 Top Canciones de la Semana</h3>
+            <h3 class="text-sm font-bold text-cyan-400 mb-3 flex items-center gap-2">🏆 Top Canciones Más Pedidas</h3>
             <ul id="ranking-container" class="space-y-2 text-xs text-slate-300">
-                <li class="flex justify-between bg-slate-950 p-2.5 rounded-lg border border-slate-800"><span>Cargando ranking desde Google Sheets...</span></li>
+                <li class="flex justify-between bg-slate-950 p-2.5 rounded-lg border border-slate-800"><span>Cargando ranking en tiempo real...</span></li>
             </ul>
         </div>
     </div>
@@ -55,7 +55,6 @@
 
         async function cargarDatosIniciales() {
             try {
-                // Usamos redirect: 'follow' para lidiar con el código 302 de Google Apps Script
                 const response = await fetch(APPS_SCRIPT_URL, { redirect: 'follow' });
                 const resultado = await response.json();
                 
@@ -71,20 +70,11 @@
                     });
                     document.getElementById('ranking-container').innerHTML = htmlRanking;
                 } else {
-                    document.getElementById('ranking-container').innerHTML = `
-                        <li class="flex justify-between bg-slate-950 p-2.5 rounded-lg border border-slate-800"><span>1. Salsa Romántica - Artista A</span> <span class="text-pink-400 font-bold">142 peticiones</span></li>
-                        <li class="flex justify-between bg-slate-950 p-2.5 rounded-lg border border-slate-800"><span>2. Urbano / Reggaeton - Artista B</span> <span class="text-pink-400 font-bold">98 peticiones</span></li>
-                        <li class="flex justify-between bg-slate-950 p-2.5 rounded-lg border border-slate-800"><span>3. Electronic Dance - Artista C</span> <span class="text-pink-400 font-bold">75 peticiones</span></li>
-                    `;
+                    document.getElementById('ranking-container').innerHTML = `<li class="text-slate-400 p-2">Aún no hay canciones en el ranking. ¡Sé el primero en pedir una!</li>`;
                 }
             } catch (error) {
                 console.error("Error al cargar el ranking remoto:", error);
-                // Datos de respaldo visual para que la app nunca se quede en blanco si hay restricciones de red
-                document.getElementById('ranking-container').innerHTML = `
-                    <li class="flex justify-between bg-slate-950 p-2.5 rounded-lg border border-slate-800"><span>1. Salsa Romántica - Artista A</span> <span class="text-pink-400 font-bold">142 peticiones</span></li>
-                    <li class="flex justify-between bg-slate-950 p-2.5 rounded-lg border border-slate-800"><span>2. Urbano / Reggaeton - Artista B</span> <span class="text-pink-400 font-bold">98 peticiones</span></li>
-                    <li class="flex justify-between bg-slate-950 p-2.5 rounded-lg border border-slate-800"><span>3. Electronic Dance - Artista C</span> <span class="text-pink-400 font-bold">75 peticiones</span></li>
-                `;
+                document.getElementById('ranking-container').innerHTML = `<li class="text-red-400 p-2">Error al sincronizar con la base de datos.</li>`;
             }
         }
 
@@ -93,7 +83,7 @@
             
             const btn = document.getElementById('btn-enviar');
             btn.disabled = true;
-            btn.innerText = "Registrando y enviando...";
+            btn.innerText = "Registrando en base de datos...";
 
             const nombre = document.getElementById('nombre').value;
             const cancion = document.getElementById('cancion').value;
@@ -109,6 +99,7 @@
                 rumbero: quiereLista ? "Sí" : "No"
             };
 
+            // 1. Enviar los datos para que el Apps Script actualice el Ranking y guarde la Petición
             try {
                 await fetch(APPS_SCRIPT_URL, {
                     method: 'POST',
@@ -120,6 +111,7 @@
                 console.error("Error al registrar en Google Sheets:", error);
             }
 
+            // 2. Abrir WhatsApp con el mensaje estructurado al número +584129294955
             const textoWhatsApp = `🎵 *NUEVA PETICIÓN / SALUDO - DON KHALI* 🎵\n\n` +
                                   `👤 *Nombre/Apodo:* ${nombre}\n` +
                                   `🎶 *Artista y Canción:* ${cancion}\n` +
@@ -132,9 +124,13 @@
 
             window.open(urlWhatsApp, '_blank');
 
+            // Limpiar formulario, restaurar botón y actualizar el ranking visualmente
             document.getElementById('form-peticion').reset();
             btn.disabled = false;
             btn.innerText = "Enviar por WhatsApp 🚀";
+
+            // Esperar un segundo y recargar el ranking para reflejar el voto/petición nueva
+            setTimeout(cargarDatosIniciales, 1500);
         }
 
         window.addEventListener('DOMContentLoaded', cargarDatosIniciales);
