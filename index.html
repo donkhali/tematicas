@@ -19,99 +19,81 @@
     </header>
 
     <div id="app-container" class="w-full max-w-md space-y-6">
-        <!-- El contenido se cargará dinámicamente según Google Sheets -->
-        <div class="text-center text-emerald-400 animate-pulse py-10">Sincronizando sistema con Don Khali... 🎧</div>
+        <!-- ESTADO INICIAL INSTANTÁNEO (Muestra tu nueva imagen de inmediato mientras conecta) -->
+        <div id="panel-principal" class="p-4 bg-slate-900 border-2 border-pink-500 rounded-2xl shadow-[0_0_20px_rgba(236,72,153,0.3)] text-center">
+            <span class="text-xs uppercase tracking-widest text-pink-400 font-bold block mb-3">Producción de Fiestas Temáticas</span>
+            <div class="overflow-hidden rounded-xl border border-slate-700 shadow-md bg-slate-950 flex justify-center">
+                <img src="flyer-tematicas.jpg" alt="Flyer Temático Don Khali" class="w-full object-cover">
+            </div>
+            <p class="text-xs text-slate-300 mt-3 animate-pulse">Sincronizando estado del evento...</p>
+        </div>
+
+        <div class="bg-slate-900 border border-cyan-500/50 p-4 rounded-2xl text-left shadow-lg">
+            <h3 class="text-sm font-bold text-cyan-400 mb-3 flex items-center gap-2">🏆 Top Canciones Más Pedidas</h3>
+            <ul id="ranking-container" class="space-y-2 text-xs text-slate-300">
+                <li class="flex justify-between bg-slate-950 p-2.5 rounded-lg border border-slate-800"><span>Cargando ranking en tiempo real...</span></li>
+            </ul>
+        </div>
     </div>
 
     <script>
         const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzVQsu-9FJJPD5T3oZAXpCx8mPB79iBYXz38YD6Dp0d_iC1fLKFyFuio7wFQrI8NA/exec';
 
-        let datosRemotos = {
-            modoEnVivo: "NO",
-            flyerUrl: "flyer-valentina.jpg",
-            mensajeProximo: "El sistema de peticiones abrirá pronto.",
-            ranking: []
-        };
-
         function procesarDatosApp(resultado) {
             if (resultado && resultado.status === 'success') {
-                datosRemotos.modoEnVivo = resultado.modoEnVivo || "NO";
-                if (resultado.flyerUrl) datosRemotos.flyerUrl = resultado.flyerUrl;
-                if (resultado.mensajeProximo) datosRemotos.mensajeProximo = resultado.mensajeProximo;
-                if (resultado.ranking) datosRemotos.ranking = resultado.ranking;
-            }
-            renderizarInterfaz();
-        }
+                const panelPrincipal = document.getElementById('panel-principal');
 
-        function renderizarInterfaz() {
-            const container = document.getElementById('app-container');
-            let rankingHTML = '';
+                // Si Google Sheets indica "SI", cambiamos el bloque superior por el Formulario en Vivo
+                if (resultado.modoEnVivo === "SI") {
+                    panelPrincipal.innerHTML = `
+                        <div class="p-6 bg-slate-900 border-2 border-emerald-400 rounded-2xl shadow-[0_0_25px_rgba(52,211,153,0.6)] text-center">
+                            <span class="inline-block bg-emerald-400 text-slate-950 font-black px-3 py-1 rounded-full text-xs animate-pulse mb-3 shadow-[0_0_15px_rgba(52,211,153,0.8)]">🟢 ESTANDO EN VIVO</span>
+                            <h2 class="text-xl font-bold text-emerald-300 mb-4">Pide tu canción y manda tu saludo</h2>
+                            <form id="form-peticion" class="space-y-3 text-left" onsubmit="enviarPeticion(event)">
+                                <input type="text" id="nombre" placeholder="Tu Nombre / Apodo" class="w-full p-3 bg-slate-950 border border-emerald-500/50 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-400" required>
+                                <input type="text" id="cancion" placeholder="Artista y Canción" class="w-full p-3 bg-slate-950 border border-emerald-500/50 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-400" required>
+                                <textarea id="saludo" placeholder="Tu saludo para el DJ o el local..." class="w-full p-3 bg-slate-950 border border-emerald-500/50 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-400" rows="2"></textarea>
+                                <input type="tel" id="whatsapp" placeholder="Tu WhatsApp (Para avisarte cuando suene)" class="w-full p-3 bg-slate-950 border border-emerald-500/50 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-400" required>
+                                
+                                <div class="flex items-start gap-2 pt-1">
+                                    <input type="checkbox" id="suscripcion-rumberos" class="mt-0.5 accent-emerald-400 w-4 h-4 rounded cursor-pointer">
+                                    <label for="suscripcion-rumberos" class="text-[11px] text-slate-400 cursor-pointer select-none leading-tight">
+                                        Agregame a la lista de rumberos para recibir notificaciones de nuevas fiestas
+                                    </label>
+                                </div>
 
-            if (datosRemotos.ranking.length > 0) {
-                datosRemotos.ranking.forEach(item => {
-                    rankingHTML += `
-                        <li class="flex justify-between bg-slate-950 p-2.5 rounded-lg border border-slate-800">
-                            <span>${item.posicion}. ${item.cancion}</span> 
-                            <span class="text-pink-400 font-bold">${item.peticiones} peticiones</span>
-                        </li>
+                                <button type="submit" id="btn-enviar" class="w-full bg-gradient-to-r from-emerald-400 to-teal-500 text-slate-950 font-extrabold py-3 rounded-xl shadow-lg shadow-emerald-500/30 transition transform active:scale-95 mt-2">Enviar por WhatsApp 🚀</button>
+                            </form>
+                        </div>
                     `;
-                });
-            } else {
-                rankingHTML = `<li class="text-slate-400 p-2">Aún no hay canciones en el ranking.</li>`;
-            }
-
-            if (datosRemotos.modoEnVivo === "SI") {
-                // ESTADO B: MODO EN VIVO (Formulario arriba + Ranking abajo)
-                container.innerHTML = `
-                    <div class="p-6 bg-slate-900 border-2 border-emerald-400 rounded-2xl shadow-[0_0_25px_rgba(52,211,153,0.6)] text-center">
-                        <span class="inline-block bg-emerald-400 text-slate-950 font-black px-3 py-1 rounded-full text-xs animate-pulse mb-3 shadow-[0_0_15px_rgba(52,211,153,0.8)]">🟢 ESTANDO EN VIVO</span>
-                        <h2 class="text-xl font-bold text-emerald-300 mb-4">Pide tu canción y manda tu saludo</h2>
-                        <form id="form-peticion" class="space-y-3 text-left" onsubmit="enviarPeticion(event)">
-                            <input type="text" id="nombre" placeholder="Tu Nombre / Apodo" class="w-full p-3 bg-slate-950 border border-emerald-500/50 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-400" required>
-                            <input type="text" id="cancion" placeholder="Artista y Canción" class="w-full p-3 bg-slate-950 border border-emerald-500/50 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-400" required>
-                            <textarea id="saludo" placeholder="Tu saludo para el DJ o el local..." class="w-full p-3 bg-slate-950 border border-emerald-500/50 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-400" rows="2"></textarea>
-                            <input type="tel" id="whatsapp" placeholder="Tu WhatsApp (Para avisarte cuando suene)" class="w-full p-3 bg-slate-950 border border-emerald-500/50 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-400" required>
-                            
-                            <div class="flex items-start gap-2 pt-1">
-                                <input type="checkbox" id="suscripcion-rumberos" class="mt-0.5 accent-emerald-400 w-4 h-4 rounded cursor-pointer">
-                                <label for="suscripcion-rumberos" class="text-[11px] text-slate-400 cursor-pointer select-none leading-tight">
-                                    Agregame a la lista de rumberos para recibir notificaciones de nuevas fiestas
-                                </label>
+                } else {
+                    // Si está en "NO", mantenemos tu imagen temática oficial con el texto dinámico de la hoja Config
+                    panelPrincipal.innerHTML = `
+                        <div class="p-4 bg-slate-900 border-2 border-pink-500 rounded-2xl shadow-[0_0_20px_rgba(236,72,153,0.3)] text-center">
+                            <span class="text-xs uppercase tracking-widest text-pink-400 font-bold block mb-2">Producción de Fiestas Temáticas</span>
+                            <div class="overflow-hidden rounded-xl border border-slate-700 shadow-md bg-slate-950 flex justify-center">
+                                <img src="flyer-tematicas.jpg" alt="Flyer Temático Don Khali" class="w-full object-cover">
                             </div>
-
-                            <button type="submit" id="btn-enviar" class="w-full bg-gradient-to-r from-emerald-400 to-teal-500 text-slate-950 font-extrabold py-3 rounded-xl shadow-lg shadow-emerald-500/30 transition transform active:scale-95 mt-2">Enviar por WhatsApp 🚀</button>
-                        </form>
-                    </div>
-
-                    <div class="bg-slate-900 border border-cyan-500/50 p-4 rounded-2xl text-left shadow-lg">
-                        <h3 class="text-sm font-bold text-cyan-400 mb-3 flex items-center gap-2">🏆 Top Canciones Más Pedidas</h3>
-                        <ul class="space-y-2 text-xs text-slate-300">
-                            ${rankingHTML}
-                        </ul>
-                    </div>
-                `;
-            } else {
-                // ESTADO A: MODO INACTIVO (Flyer del evento arriba + Ranking abajo)
-                container.innerHTML = `
-                    <div class="bg-slate-900 border-2 border-pink-500 p-4 rounded-2xl shadow-[0_0_20px_rgba(236,72,153,0.3)] text-center">
-                        <span class="text-xs uppercase tracking-widest text-pink-400 font-bold block mb-2">Próximo Evento Oficial</span>
-                        <div class="overflow-hidden rounded-xl border border-slate-700 shadow-md bg-slate-950 flex justify-center">
-                            <img src="${datosRemotos.flyerUrl}" alt="Flyer del Evento" class="w-full object-cover" onerror="this.style.display='none'; document.getElementById('fallback-flyer').style.display='block';">
+                            <p class="text-xs text-slate-300 mt-3">${resultado.mensajeProximo || 'El sistema de peticiones abrirá pronto.'}</p>
                         </div>
-                        <div id="fallback-flyer" style="display:none;" class="p-6 bg-slate-950 border border-pink-500/50 rounded-xl text-center">
-                            <h4 class="text-pink-400 font-bold text-base">PRÓXIMO EVENTO</h4>
-                            <p class="text-xs text-slate-300 mt-1">Consulta los detalles en el flyer oficial</p>
-                        </div>
-                        <p class="text-xs text-slate-300 mt-3">${datosRemotos.mensajeProximo}</p>
-                    </div>
+                    `;
+                }
 
-                    <div class="bg-slate-900 border border-cyan-500/50 p-4 rounded-2xl text-left shadow-lg">
-                        <h3 class="text-sm font-bold text-cyan-400 mb-3 flex items-center gap-2">🏆 Top Canciones de la Semana</h3>
-                        <ul class="space-y-2 text-xs text-slate-300">
-                            ${rankingHTML}
-                        </ul>
-                    </div>
-                `;
+                // Renderizar el Ranking actualizado debajo
+                if (resultado.ranking && resultado.ranking.length > 0) {
+                    let htmlRanking = '';
+                    resultado.ranking.forEach(item => {
+                        htmlRanking += `
+                            <li class="flex justify-between bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                                <span>${item.posicion}. ${item.cancion}</span> 
+                                <span class="text-pink-400 font-bold">${item.peticiones} peticiones</span>
+                            </li>
+                        `;
+                    });
+                    document.getElementById('ranking-container').innerHTML = htmlRanking;
+                } else {
+                    document.getElementById('ranking-container').innerHTML = `<li class="text-slate-400 p-2">Aún no hay canciones en el ranking.</li>`;
+                }
             }
         }
 
@@ -122,9 +104,6 @@
             const script = document.createElement('script');
             script.id = 'jsonp-script';
             script.src = `${APPS_SCRIPT_URL}?callback=procesarDatosApp&t=${new Date().getTime()}`;
-            script.onerror = function() {
-                console.error("Error al cargar datos remotos.");
-            };
             document.body.appendChild(script);
         }
 
