@@ -53,7 +53,7 @@
     <script>
         const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzVQsu-9FJJPD5T3oZAXpCx8mPB79iBYXz38YD6Dp0d_iC1fLKFyFuio7wFQrI8NA/exec';
 
-        // Función que procesa los datos del ranking recibidos
+        // Función global que captura el JSONP del Apps Script para renderizar el ranking
         function procesarRanking(resultado) {
             if (resultado && resultado.status === 'success' && resultado.ranking && resultado.ranking.length > 0) {
                 let htmlRanking = '';
@@ -67,20 +67,21 @@
                 });
                 document.getElementById('ranking-container').innerHTML = htmlRanking;
             } else {
-                document.getElementById('ranking-container').innerHTML = `<li class="text-slate-400 p-2">Aún no hay canciones en el ranking.</li>`;
+                document.getElementById('ranking-container').innerHTML = `<li class="text-slate-400 p-2">Aún no hay canciones en el ranking. ¡Sé el primero en pedir una!</li>`;
             }
         }
 
-        // Carga el ranking usando JSONP para evitar bloqueos de CORS
+        // Carga el ranking inyectando una etiqueta script para burlar las restricciones de CORS
         function cargarRankingJSONP() {
+            // Eliminar script anterior si existe para evitar acumulación
+            const scriptViejo = document.getElementById('jsonp-script');
+            if (scriptViejo) scriptViejo.remove();
+
             const script = document.createElement('script');
-            script.src = `${APPS_SCRIPT_URL}?callback=procesarRanking`;
+            script.id = 'jsonp-script';
+            script.src = `${APPS_SCRIPT_URL}?callback=procesarRanking&t=${new Date().getTime()}`;
             script.onerror = function() {
-                document.getElementById('ranking-container').innerHTML = `
-                    <li class="flex justify-between bg-slate-950 p-2.5 rounded-lg border border-slate-800"><span>1. Salsa Romántica - Artista A</span> <span class="text-pink-400 font-bold">142 peticiones</span></li>
-                    <li class="flex justify-between bg-slate-950 p-2.5 rounded-lg border border-slate-800"><span>2. Urbano / Reggaeton - Artista B</span> <span class="text-pink-400 font-bold">98 peticiones</span></li>
-                    <li class="flex justify-between bg-slate-950 p-2.5 rounded-lg border border-slate-800"><span>3. Electronic Dance - Artista C</span> <span class="text-pink-400 font-bold">75 peticiones</span></li>
-                `;
+                document.getElementById('ranking-container').innerHTML = `<li class="text-red-400 p-2">No se pudo conectar con la base de datos de ranking.</li>`;
             };
             document.body.appendChild(script);
         }
@@ -90,7 +91,7 @@
             
             const btn = document.getElementById('btn-enviar');
             btn.disabled = true;
-            btn.innerText = "Registrando en base de datos...";
+            btn.innerText = "Registrando en la base de datos...";
 
             const nombre = document.getElementById('nombre').value;
             const cancion = document.getElementById('cancion').value;
@@ -106,7 +107,7 @@
                 rumbero: quiereLista ? "Sí" : "No"
             };
 
-            // Enviar al Apps Script mediante no-cors (ideal para guardar en Peticiones y actualizar Ranking)
+            // 1. Enviar al Apps Script para que sume al ranking y guarde en Peticiones
             try {
                 await fetch(APPS_SCRIPT_URL, {
                     method: 'POST',
@@ -118,7 +119,7 @@
                 console.error("Error al registrar en Google Sheets:", error);
             }
 
-            // Abrir WhatsApp con el mensaje estructurado al número +584129294955
+            // 2. Abrir WhatsApp con el mensaje estructurado al número +584129294955
             const textoWhatsApp = `🎵 *NUEVA PETICIÓN / SALUDO - DON KHALI* 🎵\n\n` +
                                   `👤 *Nombre/Apodo:* ${nombre}\n` +
                                   `🎶 *Artista y Canción:* ${cancion}\n` +
@@ -136,10 +137,11 @@
             btn.disabled = false;
             btn.innerText = "Enviar por WhatsApp 🚀";
 
-            // Volver a cargar el ranking después de un momento para ver reflejada la nueva petición
+            // 3. Actualizar el ranking automáticamente después de 2 segundos para reflejar la nueva suma
             setTimeout(cargarRankingJSONP, 2000);
         }
 
+        // Cargar el ranking al iniciar la página
         window.addEventListener('DOMContentLoaded', cargarRankingJSONP);
     </script>
 </body>
