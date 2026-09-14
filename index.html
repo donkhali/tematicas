@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Peticiones DJ - Don Khali</title>
+    <!-- Tailwind CSS por CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-white min-h-screen flex flex-col items-center justify-center p-4">
+
+    <!-- Cabecera con el Logotipo de Don Khali -->
+    <header class="mb-6 text-center">
+        <div class="relative inline-block">
+            <img src="logo-donkhali.png" alt="Logotipo Don Khali" class="w-28 h-28 mx-auto rounded-full border-2 border-emerald-400 shadow-[0_0_25px_rgba(52,211,153,0.6)] object-cover" onerror="this.src='https://via.placeholder.com/112/09090b/34d399?text=DON+KHALI';">
+        </div>
+        <h1 class="text-xl font-black tracking-widest text-emerald-400 mt-2 drop-shadow-[0_0_10px_rgba(52,211,153,0.4)]">DON KHALI</h1>
+        <p class="text-xs text-slate-400 uppercase tracking-wider">Official DJ & Producer</p>
+    </header>
+
+    <div id="app-container" class="w-full max-w-md space-y-6">
+        <!-- SECCIÓN 1: FORMULARIO EN VIVO (Verde Neón) -->
+        <div class="p-6 bg-slate-900 border-2 border-emerald-400 rounded-2xl shadow-[0_0_25px_rgba(52,211,153,0.6)] text-center">
+            <span class="inline-block bg-emerald-400 text-slate-950 font-black px-3 py-1 rounded-full text-xs animate-pulse mb-3 shadow-[0_0_15px_rgba(52,211,153,0.8)]">🟢 ESTANDO EN VIVO</span>
+            <h2 class="text-xl font-bold text-emerald-300 mb-4">Pide tu canción y manda tu saludo</h2>
+            <form id="form-peticion" class="space-y-3 text-left" onsubmit="enviarPeticion(event)">
+                <input type="text" id="nombre" placeholder="Tu Nombre / Apodo" class="w-full p-3 bg-slate-950 border border-emerald-500/50 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-400" required>
+                <input type="text" id="cancion" placeholder="Artista y Canción" class="w-full p-3 bg-slate-950 border border-emerald-500/50 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-400" required>
+                <textarea id="saludo" placeholder="Tu saludo para el DJ o el local..." class="w-full p-3 bg-slate-950 border border-emerald-500/50 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-400" rows="2"></textarea>
+                <input type="tel" id="whatsapp" placeholder="Tu WhatsApp (Para avisarte cuando suene)" class="w-full p-3 bg-slate-950 border border-emerald-500/50 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-400" required>
+                
+                <!-- Checklist de suscripción en letras pequeñas -->
+                <div class="flex items-start gap-2 pt-1">
+                    <input type="checkbox" id="suscripcion-rumberos" class="mt-0.5 accent-emerald-400 w-4 h-4 rounded cursor-pointer">
+                    <label for="suscripcion-rumberos" class="text-[11px] text-slate-400 cursor-pointer select-none leading-tight">
+                        Agregame a la lista de rumberos para recibir notificaciones de nuevas fiestas
+                    </label>
+                </div>
+
+                <button type="submit" id="btn-enviar" class="w-full bg-gradient-to-r from-emerald-400 to-teal-500 text-slate-950 font-extrabold py-3 rounded-xl shadow-lg shadow-emerald-500/30 transition transform active:scale-95 mt-2">Enviar por WhatsApp 🚀</button>
+            </form>
+        </div>
+
+        <!-- SECCIÓN 2: RANKING DE CANCIONES (Abajo) -->
+        <div class="bg-slate-900 border border-cyan-500/50 p-4 rounded-2xl text-left shadow-lg">
+            <h3 class="text-sm font-bold text-cyan-400 mb-3 flex items-center gap-2">🏆 Top Canciones de la Semana</h3>
+            <ul id="ranking-container" class="space-y-2 text-xs text-slate-300">
+                <li class="flex justify-between bg-slate-950 p-2.5 rounded-lg border border-slate-800"><span>Cargando ranking...</span></li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // ⚠️ PEGA AQUÍ LA URL DE TU APLICACIÓN WEB DE GOOGLE APPS SCRIPT
+        const APPS_SCRIPT_URL = 'TU_URL_DE_GOOGLE_APPS_SCRIPT_AQUI';
+
+        async function cargarDatosIniciales() {
+            try {
+                const response = await fetch(APPS_SCRIPT_URL);
+                const resultado = await response.json();
+                
+                if (resultado.status === 'success' && resultado.ranking && resultado.ranking.length > 0) {
+                    let htmlRanking = '';
+                    resultado.ranking.forEach(item => {
+                        htmlRanking += `
+                            <li class="flex justify-between bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                                <span>${item.posicion}. ${item.cancion}</span> 
+                                <span class="text-pink-400 font-bold">${item.peticiones} peticiones</span>
+                            </li>
+                        `;
+                    });
+                    document.getElementById('ranking-container').innerHTML = htmlRanking;
+                }
+            } catch (error) {
+                console.error("Error al cargar el ranking remoto:", error);
+            }
+        }
+
+        async function enviarPeticion(event) {
+            event.preventDefault();
+            
+            const btn = document.getElementById('btn-enviar');
+            btn.disabled = true;
+            btn.innerText = "Registrando y enviando...";
+
+            const nombre = document.getElementById('nombre').value;
+            const cancion = document.getElementById('cancion').value;
+            const saludo = document.getElementById('saludo').value;
+            const whatsapp = document.getElementById('whatsapp').value;
+            const quiereLista = document.getElementById('suscripcion-rumberos').checked;
+
+            const estadoRumbero = quiereLista ? "Sí" : "No";
+
+            const payload = {
+                nombre: nombre,
+                cancion: cancion,
+                saludo: saludo,
+                whatsapp: whatsapp,
+                rumbero: estadoRumbero
+            };
+
+            // 1. Guardar de forma asíncrona en Google Sheets (Pestaña "Peticiones")
+            try {
+                await fetch(APPS_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+            } catch (error) {
+                console.error("Error al registrar en Google Sheets:", error);
+            }
+
+            // 2. Abrir WhatsApp con el mensaje estructurado
+            const textoWhatsApp = `🎵 *NUEVA PETICIÓN / SALUDO - DON KHALI* 🎵\n\n` +
+                                  `👤 *Nombre/Apodo:* ${nombre}\n` +
+                                  `🎶 *Artista y Canción:* ${cancion}\n` +
+                                  `💬 *Saludo:* ${saludo || 'Ninguno'}\n` +
+                                  `📱 *WhatsApp:* ${whatsapp}\n` +
+                                  `📋 *Lista de Rumberos:* ${quiereLista ? '🔥 Sí, agrégame' : 'No'}`;
+
+            const numeroTelefono = "584129294955";
+            const urlWhatsApp = `https://wa.me/${numeroTelefono}?text=${encodeURIComponent(textoWhatsApp)}`;
+
+            window.open(urlWhatsApp, '_blank');
+
+            // Limpiar formulario y restaurar botón
+            document.getElementById('form-peticion').reset();
+            btn.disabled = false;
+            btn.innerText = "Enviar por WhatsApp 🚀";
+        }
+
+        window.addEventListener('DOMContentLoaded', cargarDatosIniciales);
+    </script>
+</body>
+</html>
